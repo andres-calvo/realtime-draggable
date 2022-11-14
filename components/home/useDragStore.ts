@@ -1,3 +1,4 @@
+import { SpringRef } from "@react-spring/web";
 import create from "zustand";
 
 export interface IDragStore {
@@ -18,3 +19,29 @@ export const useDragsStore = create<IDragStore>((set, get) => ({
     }));
   },
 }));
+type Coordinate ={x:number,y:number}
+type DragApi = SpringRef<Coordinate>
+export class DragsWebSocket {
+  private drags=new Map<string,DragApi>()
+  /**
+   * 
+   * @param id Should be something prefixed with some websocket client id unique to this session
+   * @param api 
+   */
+  addDrag(id:string,api:DragApi){
+    this.drags.set(id,api)
+  }
+  /**
+   * Use this to remove, and also ensure calling on cleaning sideEffects
+   * @param id Id to remove
+   */
+  removeDrag(id:string){
+    this.drags.delete(id)
+  }
+  
+  moveDrag(id:string,coordinate:Coordinate){
+    const a = this.drags.get(id)
+    a && a.start(coordinate)
+  }
+}
+
