@@ -1,19 +1,34 @@
 import { DndContext } from "@dnd-kit/core";
 import Head from "next/head";
-import { useDraggable } from "@dnd-kit/core";
 import { DragsWebSocket, useDragsStore } from "../components/home/useDragStore";
-import { animated,  useSpring} from "@react-spring/web";
-import { useEffect, useState } from "react";
+import { animated, useSpring } from "@react-spring/web";
+import { useEffect, useRef, useState } from "react";
+import { useDrag } from "@use-gesture/react";
 
+const dragsId = [...Array(100).keys()].map((el) => `drag${el}`);
+function parseMovement(mov: string) {
+  return mov.split("|");
+}
 export default function Home() {
   const updateDrags = useDragsStore((state) => state.updateDrags);
-  const [dragApi] = useState(()=>new DragsWebSocket())
-  useEffect(()=>{
-    dragApi.moveDrag("drag1",{x:100,y:400})
-    dragApi.moveDrag("drag2",{x:200,y:100})
-    dragApi.moveDrag("drag3",{x:300,y:100})
+  const [dragApi] = useState(() => new DragsWebSocket());
+  useEffect(() => {
+    dragApi.moveDrag("drag1", { x: 100, y: 400 });
+    dragApi.moveDrag("drag2", { x: 200, y: 100 });
+    dragApi.moveDrag("drag3", { x: 300, y: 100 });
+    dragApi.socket.on("connect", () => {
+      console.log("Conectado");
+    });
+    dragApi.socket.on("moveDrag", (payload: string[]) => {
+      payload.forEach((el) => {
+        const [id, x, y] = parseMovement(el);
+        dragApi.moveDrag(id, { x: parseInt(x), y: parseInt(y) });
+      });
 
-  },[])
+      // const [id,x,y] = payload.split("|")
+      // dragApi.moveDrag(id,{x:parseInt(x),y:parseInt(y)})
+    });
+  }, []);
   return (
     <main className="min-h-screen w-full bg-slate-200 flex justify-center items-center p-8 relative">
       <Head>
@@ -26,49 +41,51 @@ export default function Home() {
           updateDrags({ id: "draggable", x: delta.x, y: delta.y })
         }
       >
-        <DraggableDiv dragApi={dragApi} id="drag1" />
-        <DraggableDiv dragApi={dragApi} id="drag2" />
-        <DraggableDiv dragApi={dragApi} id="drag3" />
-
-
+        {dragsId.map((el) => (
+          <DraggableDiv dragApi={dragApi} id={el} key={el} />
+        ))}
       </DndContext>
     </main>
   );
 }
 
-const DraggableDiv = ({dragApi,id}:{dragApi:DragsWebSocket,id:string}) => {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id,
-  });
-  const drag = useDragsStore((state) => state.drags[0]);
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
+const DraggableDiv = ({
+  dragApi,
+  id,
+}: {
+  dragApi: DragsWebSocket;
+  id: string;
+}) => {
+  const [props, api] = useSpring(() => ({
+    from: { x: 0, y: 0 },
+    to: { x: 0, y: 0 },
+    reset: false,
 
-    const [props,api] = useSpring(()=>({
-      from: { x:0 ,y:0},
-      to: { x:0,y:0},
-      reset:false
-    }))
- 
-  useEffect(()=>{
-    dragApi.addDrag(id,api)
-    return ()=>{
-      dragApi.removeDrag(id)
-    }
-  },[api])
+  }));
+
+  const bind = useDrag(({ xy }) => {
+    api.start({
+      x: xy[0],
+      y: xy[1],
+      immediate: true,
+      config: {
+        clamp: true,
+      },
+    });
+  });
+
+  useEffect(() => {
+    dragApi.addDrag(id, api);
+    return () => {
+      dragApi.removeDrag(id);
+    };
+  }, [api]);
   return (
     <animated.button
-      className="font-bold shadow-sm border bg-slate-500 rounded-md px-6 py-4 absolute"
-      ref={setNodeRef}
-      style={{ ...style, top: drag.y, left: drag.x ,...props}}
-      {...listeners}
-      {...attributes}
-    >
-      Hola
-    </animated.button>
+      className="font-bold shadow-sm border bg-slate-500 rounded-md px-6 py-4 absolute top-0 left-0"
+      {...bind()}
+      style={props}
+    ></animated.button>
   );
 };
 
@@ -85,6 +102,17 @@ const DraggableDiv = ({dragApi,id}:{dragApi:DragsWebSocket,id:string}) => {
 //     </section>
 //   );
 // };
-function fireUpdate(callback:()=>void){
-  setTimeout(()=>callback(),300)
+
+function usePrevious(value: any) {
+  // The ref object is a generic container whose current property is mutable ...
+  // ... and can hold any value, similar to an instance property on a class
+  const ref = useRef();
+
+  // Store current value in ref
+  useEffect(() => {
+    ref.current = value;
+  }, [value]); // Only re-run if value changes
+
+  // Return previous value (happens before update in useEffect above)
+  return ref.current;
 }

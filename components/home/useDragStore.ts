@@ -1,6 +1,6 @@
 import { SpringRef } from "@react-spring/web";
 import create from "zustand";
-
+import { io,Socket } from "socket.io-client";
 export interface IDragStore {
   drags: Array<{ id: string; x: number; y: number }>;
   updateDrags: (drag: IDragStore["drags"][0]) => void;
@@ -23,6 +23,10 @@ type Coordinate ={x:number,y:number}
 type DragApi = SpringRef<Coordinate>
 export class DragsWebSocket {
   private drags=new Map<string,DragApi>()
+  readonly socket:Socket;
+  constructor(){
+    this.socket = io('http://localhost:4000')
+  }
   /**
    * 
    * @param id Should be something prefixed with some websocket client id unique to this session
@@ -38,10 +42,12 @@ export class DragsWebSocket {
   removeDrag(id:string){
     this.drags.delete(id)
   }
-  
+
   moveDrag(id:string,coordinate:Coordinate){
     const a = this.drags.get(id)
-    a && a.start(coordinate)
+    a && a.start({...coordinate,config:{
+      tension:20
+    }})
   }
 }
 
