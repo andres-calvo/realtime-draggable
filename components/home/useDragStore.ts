@@ -25,7 +25,8 @@ export class DragsWebSocket {
   private drags=new Map<string,DragApi>()
   readonly socket:Socket;
   constructor(){
-    this.socket = io('http://localhost:4000')
+    //@ts-ignore
+    this.socket = io(process.env.NEXT_PUBLIC_WS_API)
   }
   /**
    * 
