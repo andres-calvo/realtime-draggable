@@ -15,7 +15,7 @@ import {
 import { animated, useTransition } from "@react-spring/web";
 const ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,16,17,18,19,20,21];
 const MultipleDrags = () => {
-  const [activeId, setActiveId] = useState(null);
+  const [activeId, setActiveId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const handleSelect = (id: number) => {
     setSelectedIds((selectedIds) => {
@@ -42,7 +42,12 @@ const MultipleDrags = () => {
     <main className="h-screen w-full bg-slate-200 flex justify-center items-center p-8 relative ">
       <div className="w-96 border border-red-500 h-4/5 overflow-y-auto flex flex-col items-center">
         <DndContext
-          onDragStart={handleDragStart}
+          onDragStart={({ active }) =>{
+            setActiveId(active.id as number);
+            setSelectedIds((selected) =>
+              selected.includes(active.id as number) ? selected : []
+            );
+          }}
           onDragEnd={handleDragEnd}
           sensors={sensors}
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
@@ -65,12 +70,7 @@ const MultipleDrags = () => {
       </div>
     </main>
   );
-  function handleDragStart({ active }) {
-    setActiveId(active.id);
-    setSelectedIds((selected) =>
-      selected.includes(active.id) ? selected : []
-    );
-  }
+
   function handleDragEnd() {
     setActiveId(null);
   }
